@@ -7,7 +7,7 @@ st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="🥷")
 # ---------------------------------------------------------
 # Google Analytics (GA4) 數據追蹤設定
 # ---------------------------------------------------------
-GA_ID = "G-XXXXXXXXXX" 
+GA_ID = "G-SQSJPZ9SW9" 
 
 # 注入 GA4 基礎追蹤碼
 ga_base_code = f"""
