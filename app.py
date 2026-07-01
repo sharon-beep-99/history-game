@@ -2,7 +2,7 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # 設定網頁標題與圖示
-st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="🥷")
+st.set_page_config(page_title="清明上河圖知識挑戰", page_icon="★")
 
 # ---------------------------------------------------------
 # Google Analytics (GA4) 數據追蹤設定
@@ -219,7 +219,7 @@ else:
     )
     
     if st.session_state.score >= 80:
-        st.success("太神了！你簡直是歷史與鑑定大師，觀察力驚人！")
+        st.success("太神了！你簡直是歷史與視覺分析大師，觀察力驚人！")
     elif st.session_state.score >= 60:
         st.info("慢棒的表現！你對歷史圖像與史實細節有很強的直覺。")
     else:
