@@ -1,22 +1,16 @@
 import streamlit as st
-from streamlit_gsheets import GSheetsConnection
-import pandas as pd
-from datetime import datetime
+import urllib.request
+import urllib.parse
 
 # 設定網頁標題與圖示
 st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="🥷")
 
 # ---------------------------------------------------------
-# Google Sheets (雲端試算表) 數據連接初始化
+# Google 表單後端直接寫入機制（終極防阻擋完美對齊版）
 # ---------------------------------------------------------
-try:
-    conn = st.connection("gsheets", type=GSheetsConnection)
-except Exception as e:
-    st.error("⚠️ Google Sheets 連線初始化失敗，請檢查 Streamlit 後台 Secrets 設定。")
-
 def save_data_via_form(level, quiz_type, player_input, is_correct, current_score):
     """利用 urllib 直接在背景提交 Google 表單，數據會自動 100% 同步到試算表中"""
-    # 💡 已完全替換為您專屬的真實表單回應網址
+    # 已完全替換為您專屬的真實表單回應網址
     form_base_url = "https://docs.google.com/forms/d/e/1FAIpQLSeRhRGrySadi5UFVM4SQ6Ztctjoi4Xw-911-zLagXvqR80UhA/formResponse"
     
     # 將您的真實 entry ID 與變數進行精準對齊綁定
@@ -27,15 +21,14 @@ def save_data_via_form(level, quiz_type, player_input, is_correct, current_score
         "entry.2140147487": "是" if is_correct else "否",
         "entry.171006543": str(current_score)
     }
-        
-        # 3. 將新數據附加到舊數據後方
-        updated_df = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
-        
-        # 4. 重新寫回 Google Sheets
-        conn.update(data=updated_df)
+    
+    try:
+        data = urllib.parse.urlencode(form_data).encode("utf-8")
+        req = urllib.request.Request(form_base_url, data=data, headers={'User-Agent': 'Mozilla/5.0'})
+        with urllib.request.urlopen(req) as response:
+            pass # 成功於後端提交
     except Exception as e:
-        # 防止因為雲端硬碟瞬斷導致玩家遊戲卡死，在背景默默忽略錯誤
-        pass
+        pass # 防止任何網路波動引發前端網頁卡頓
 
 # ---------------------------------------------------------
 # 1. 核心設定：8 道關卡腳本與配分 (4~8關皆為開放送分題)
@@ -44,7 +37,7 @@ QUIZ_DATA = {
     1: {"type": "single", "q": "第一關：這個旗幟可能代表甚麼？", "options": ["日本國旗", "荷蘭東印度公司旗幟", "葡萄牙國旗", "明代商船日紋旗"], "ans": "明代商船日紋旗", "points": 10},
     2: {"type": "single", "q": "第二關：畫卷末段「校閱」的場景中，可以與明代戚家軍的陣法相對應。以上圖片中所使用的武器名稱為？", "options": ["長槍", "旗幟", "大刀", "狼筅"], "ans": "狼筅", "points": 10},
     3: {"type": "single", "q": "第三關：圖片中兵士所使用的武器名稱為？", "options": ["大砲", "佛郎機砲", "長槍", "棍棒"], "ans": "長槍", "points": 10},
-    4: {"type": "free_text", "q": "第四關：比較這張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：屏風改為立軸、人物姿勢、建築樣式、傢俱配置", "points": 15},
+    4: {"type": "free_text", "q": "第四關：比較這兩張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：屏風改為立軸、人物姿勢、建築樣式、傢俱配置", "points": 15},
     5: {"type": "free_text", "q": "第五關：比較這兩張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：街道正中間的畫軸內容、街道人物的樣貌、衣紋的紋飾", "points": 15},
     6: {"type": "free_text", "q": "第六關：比較這兩張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：掛在牆上的畫軸、建築廊柱的位置、桌案上文具的擺放方式", "points": 15},
     7: {"type": "free_text", "q": "第七關：如果是你，會為這間店鋪題寫什麼樣的招牌呢？（開放式回答-有作答即有分數）", "ans": "原本畫卷答案：灼龜", "points": 12},
@@ -85,7 +78,7 @@ if st.session_state.level <= TOTAL_LEVELS:
     
     ans = None
     
-    # --- 題型 A：選擇題 ---
+    # --- 題型 A：選擇題（第 1, 2, 3 關均為單圖） ---
     if current_q["type"] == "single":
         try:
             st.image(f"images/level{current_num}.jpg", use_container_width=True)
@@ -94,8 +87,9 @@ if st.session_state.level <= TOTAL_LEVELS:
             
         ans = st.radio("選擇答案：", current_q["options"], index=None, key=f"q_{current_num}", disabled=st.session_state.answered)
         
-    # --- 題型 B：開放式簡答題 ---
+    # --- 題型 B：開放式簡答題（第 4, 5, 6, 7, 8 關均支援送分與開放回答） ---
     elif current_q["type"] == "free_text":
+        # 第 4, 5, 6 關為雙圖並排
         if current_num in [4, 5, 6]:
             col1, col2 = st.columns(2)
             try:
@@ -106,104 +100,7 @@ if st.session_state.level <= TOTAL_LEVELS:
             except:
                 st.warning(f"⚠️ 找不到對比圖檔，請確認 images/ 內是否有 level{current_num}_a.jpg 與 level{current_num}_b.jpg")
         
+        # 第 7, 8 關為單圖招牌題
         elif current_num in [7, 8]:
             try:
-                st.image(f"images/level{current_num}.jpg", caption="店鋪招牌局部", use_container_width=True)
-            except:
-                st.warning(f"⚠️ 找不到圖檔，請確認 images/ 內是否有 level{current_num}.jpg")
-            
-        user_input = st.text_input("請輸入您的觀察或答案：", key=f"txt_{current_num}", disabled=st.session_state.answered)
-        ans = user_input.strip()
-
-    st.divider()
-
-    # 檢查答案邏輯
-    if not st.session_state.answered:
-        if st.button("檢查答案"):
-            if ans is None or ans == "":
-                st.warning("請先輸入或選擇答案再提交喔！")
-            else:
-                st.session_state.answered = True
-                
-                is_correct = True
-                if current_q["type"] == "single":
-                    is_correct = (ans == current_q["ans"])
-                
-                if is_correct:
-                    st.session_state.score += current_q["points"]
-                
-                # 📊 核心數據寫入點：點擊時立刻將資料拋到雲端試算表
-                save_to_google_sheets(
-                    level=current_num,
-                    quiz_type=current_q["type"],
-                    player_input=ans,
-                    is_correct=is_correct,
-                    current_score=st.session_state.score
-                )
-                st.rerun()
-    else:
-        if current_q["type"] == "single":
-            if ans == current_q["ans"]:
-                st.success(f"🎉 太厲害了！答案確實是【{current_q['ans']}】！")
-            else:
-                st.error(f"❌ 可惜錯囉！正確答案是【{current_q['ans']}】。")
-        else:
-            st.success(f"🎉 感謝您的分享！這是一題精彩的開放觀察題。")
-            st.info(f"💡 【{current_q['ans']}】")
-            
-        # 5秒自動換關計時器
-        st.markdown(
-            """
-            <div style="padding:10px; background-color:#f1f3f4; border-radius:5px; margin:10px 0;">
-                ⏳ <span id="countdown">5</span> 秒後自動前往下一關...
-            </div>
-            <script>
-            var count = 5;
-            var counter = setInterval(timer, 1000);
-            function timer() {
-                count = count - 1;
-                if (count <= 0) {
-                    clearInterval(counter);
-                    const buttons = window.parent.document.querySelectorAll('button');
-                    for (const button of buttons) {
-                        if (button.textContent.includes('自動下一關')) {
-                            button.click();
-                            break;
-                        }
-                    }
-                    return;
-                }
-                window.parent.document.getElementById("countdown").innerHTML = count;
-            }
-            </script>
-            """,
-            unsafe_allow_html=True
-        )
-
-        if st.button("自動下一關（若未跳轉請點此）", key="auto_next_btn"):
-            st.session_state.answered = False
-            st.session_state.level += 1
-            st.rerun()
-
-# --- 結算畫面 ---
-else:
-    if st.session_state.score >= 60:
-        st.balloons()
-    else:
-        st.snow()
-        
-    st.header("🎊 挑戰完成！")
-    st.write(f"你在這場歷史與視覺探索中獲得了 **{st.session_state.score}** 分（總分 100）。")
-    
-    if st.session_state.score >= 80:
-        st.success("太神了！你簡直是歷史與鑑定大師，觀察力驚人！")
-    elif st.session_state.score >= 60:
-        st.info("很棒的表現！你對歷史圖像與史實細節有很強的直覺。")
-    else:
-        st.warning("這些題目相當考驗眼力與史實功底，分數拿這樣已經不容易了，再接再厲！")
-    
-    if st.button("重新開始挑戰"):
-        st.session_state.level = 1
-        st.session_state.score = 0
-        st.session_state.answered = False
-        st.rerun()
+                st.image(f"images/level{current_num}.jpg", caption="店鋪招牌
