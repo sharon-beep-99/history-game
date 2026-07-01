@@ -1,6 +1,16 @@
 import streamlit as st
 from st_ga import track_ga
 
+<!-- Google tag (gtag.js) -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=G-SQSJPZ9SW9"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-SQSJPZ9SW9');
+</script>
+
 # 設定網頁標題與圖示
 st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="🥷")
 
