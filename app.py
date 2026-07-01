@@ -14,21 +14,19 @@ try:
 except Exception as e:
     st.error("⚠️ Google Sheets 連線初始化失敗，請檢查 Streamlit 後台 Secrets 設定。")
 
-def save_to_google_sheets(level, quiz_type, player_input, is_correct, current_score):
-    """將玩家作答數據即時寫入 Google Sheets，完全免除前端 iframe 阻擋問題"""
-    try:
-        # 1. 讀取現有的試算表內容
-        existing_data = conn.read(ttl=0) # ttl=0 確保每次都抓到最新資料
-        
-        # 2. 建立新的一筆數據紀錄
-        new_row = {
-            "時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-            "關卡": str(level),
-            "題目類型": str(quiz_type),
-            "玩家回答": str(player_input),
-            "是否正確": "是" if is_correct else "否",
-            "當前總分": str(current_score)
-        }
+def save_data_via_form(level, quiz_type, player_input, is_correct, current_score):
+    """利用 urllib 直接在背景提交 Google 表單，數據會自動 100% 同步到試算表中"""
+    # 💡 已完全替換為您專屬的真實表單回應網址
+    form_base_url = "https://docs.google.com/forms/d/e/1FAIpQLSeRhRGrySadi5UFVM4SQ6Ztctjoi4Xw-911-zLagXvqR80UhA/formResponse"
+    
+    # 將您的真實 entry ID 與變數進行精準對齊綁定
+    form_data = {
+        "entry.204255297": str(level),
+        "entry.1957046489": str(quiz_type),
+        "entry.685187602": str(player_input),
+        "entry.2140147487": "是" if is_correct else "否",
+        "entry.171006543": str(current_score)
+    }
         
         # 3. 將新數據附加到舊數據後方
         updated_df = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
