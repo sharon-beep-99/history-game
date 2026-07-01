@@ -2,11 +2,8 @@ import streamlit as st
 import streamlit.components.v1 as components
 
 # 設定網頁標題與圖示
-st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="")
+st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="🥷")
 
-# ---------------------------------------------------------
-# Google Analytics (GA4) 數據追蹤設定
-# ---------------------------------------------------------
 # ---------------------------------------------------------
 # Google Analytics (GA4) 數據追蹤設定
 # ---------------------------------------------------------
@@ -33,16 +30,6 @@ def track_ga_event(event_name, params):
         if (window.parent.gtag) {{
             window.parent.gtag('event', '{event_name}', {{{param_str}}});
         }}
-    </script>
-    """
-    components.html(js_code, height=0, width=0)
-
-# 輔助函式：發送自訂數據與答案到 GA 後台
-def track_ga_event(event_name, params):
-    param_str = ", ".join([f"'{k}': '{v}'" for k, v in params.items()])
-    js_code = f"""
-    <script>
-        window.parent.gtag('event', '{event_name}', {{{param_str}}});
     </script>
     """
     components.html(js_code, height=0, width=0)
@@ -223,7 +210,7 @@ else:
     )
     
     if st.session_state.score >= 80:
-        st.success("太神了！你簡直是歷史與鑑定大師，觀察力驚人！")
+        st.success("太神了！你簡真是歷史與鑑定大師，觀察力驚人！")
     elif st.session_state.score >= 60:
         st.info("很棒的表現！你對歷史圖像與史實細節有很強的直覺。")
     else:
