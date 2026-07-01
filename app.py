@@ -1,35 +1,43 @@
 import streamlit as st
-import urllib.request
-import json
-import random
+from streamlit_gsheets import GSheetsConnection
+import pandas as pd
+from datetime import datetime
 
 # 設定網頁標題與圖示
 st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="🥷")
 
 # ---------------------------------------------------------
-# Google Analytics (GA4) 後端原生發送機制 (Measurement Protocol)
+# Google Sheets (雲端試算表) 數據連接初始化
 # ---------------------------------------------------------
-GA_ID = "G-SQSJPZ9SW9"
-# 確保每個會話有獨立的客戶端識別碼
-if "ga_client_id" not in st.session_state:
-    st.session_state.ga_client_id = str(random.randint(1000000000, 9999999999))
+try:
+    conn = st.connection("gsheets", type=GSheetsConnection)
+except Exception as e:
+    st.error("⚠️ Google Sheets 連線初始化失敗，請檢查 Streamlit 後台 Secrets 設定。")
 
-def track_ga_event(event_name, params):
-    """使用 Python 內建 urllib 直接向 GA4 伺服器發送事件，100% 穿透 iframe 且免裝套件"""
-    api_secret = "YOUR_API_SECRET_IF_NEEDED" # 基礎配置通常直接發送即可
-    # GA4 Measurement Protocol 收集網址
-    url = f"https://www.google-analytics.com/mp/collect?measurement_id={GA_ID}&api_secret={api_secret}" if api_secret != "YOUR_API_SECRET_IF_NEEDED" else f"https://www.google-analytics.com/g/collect?v=2&tid={GA_ID}&cid={st.session_state.ga_client_id}&en={event_name}"
-    
-    # 將參數拼接到網址中（GA4 基礎收集格式）
-    for k, v in params.items():
-        url += f"&ep.{k}={urllib.parse.quote(str(v))}"
-        
+def save_to_google_sheets(level, quiz_type, player_input, is_correct, current_score):
+    """將玩家作答數據即時寫入 Google Sheets，完全免除前端 iframe 阻擋問題"""
     try:
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
-        with urllib.request.urlopen(req) as response:
-            pass
-    except:
-        pass # 防止因網路波動影響玩家遊玩
+        # 1. 讀取現有的試算表內容
+        existing_data = conn.read(ttl=0) # ttl=0 確保每次都抓到最新資料
+        
+        # 2. 建立新的一筆數據紀錄
+        new_row = {
+            "時間": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "關卡": str(level),
+            "題目類型": str(quiz_type),
+            "玩家回答": str(player_input),
+            "是否正確": "是" if is_correct else "否",
+            "當前總分": str(current_score)
+        }
+        
+        # 3. 將新數據附加到舊數據後方
+        updated_df = pd.concat([existing_data, pd.DataFrame([new_row])], ignore_index=True)
+        
+        # 4. 重新寫回 Google Sheets
+        conn.update(data=updated_df)
+    except Exception as e:
+        # 防止因為雲端硬碟瞬斷導致玩家遊戲卡死，在背景默默忽略錯誤
+        pass
 
 # ---------------------------------------------------------
 # 1. 核心設定：8 道關卡腳本與配分 (4~8關皆為開放送分題)
@@ -38,7 +46,7 @@ QUIZ_DATA = {
     1: {"type": "single", "q": "第一關：這個旗幟可能代表甚麼？", "options": ["日本國旗", "荷蘭東印度公司旗幟", "葡萄牙國旗", "明代商船日紋旗"], "ans": "明代商船日紋旗", "points": 10},
     2: {"type": "single", "q": "第二關：畫卷末段「校閱」的場景中，可以與明代戚家軍的陣法相對應。以上圖片中所使用的武器名稱為？", "options": ["長槍", "旗幟", "大刀", "狼筅"], "ans": "狼筅", "points": 10},
     3: {"type": "single", "q": "第三關：圖片中兵士所使用的武器名稱為？", "options": ["大砲", "佛郎機砲", "長槍", "棍棒"], "ans": "長槍", "points": 10},
-    4: {"type": "free_text", "q": "第四關：比較這兩張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：屏風改為立軸、人物姿勢、建築樣式、傢俱配置", "points": 15},
+    4: {"type": "free_text", "q": "第四關：比較這張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：屏風改為立軸、人物姿勢、建築樣式、傢俱配置", "points": 15},
     5: {"type": "free_text", "q": "第五關：比較這兩張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：街道正中間的畫軸內容、街道人物的樣貌、衣紋的紋飾", "points": 15},
     6: {"type": "free_text", "q": "第六關：比較這兩張圖，你觀察到何創時本清明上河圖有哪些獨特之處呢？（送分題-有作答即有分數）", "ans": "專家觀察參考：掛在牆上的畫軸、建築廊柱的位置、桌案上文具的擺放方式", "points": 15},
     7: {"type": "free_text", "q": "第七關：如果是你，會為這間店鋪題寫什麼樣的招牌呢？（開放式回答-有作答即有分數）", "ans": "原本畫卷答案：灼龜", "points": 12},
@@ -67,10 +75,6 @@ if st.session_state.level <= TOTAL_LEVELS:
 else:
     st.progress(1.0)
 
-# 發送首次載入的 Page View 數據
-if st.session_state.level == 1 and not st.session_state.answered:
-    track_ga_event("page_view", {"page_title": "歷史挑戰賽首頁"})
-
 # ---------------------------------------------------------
 # 遊戲關卡邏輯
 # ---------------------------------------------------------
@@ -83,7 +87,7 @@ if st.session_state.level <= TOTAL_LEVELS:
     
     ans = None
     
-    # --- 題型 A：選擇題（第 1, 2, 3 關均為單圖） ---
+    # --- 題型 A：選擇題 ---
     if current_q["type"] == "single":
         try:
             st.image(f"images/level{current_num}.jpg", use_container_width=True)
@@ -92,7 +96,7 @@ if st.session_state.level <= TOTAL_LEVELS:
             
         ans = st.radio("選擇答案：", current_q["options"], index=None, key=f"q_{current_num}", disabled=st.session_state.answered)
         
-    # --- 題型 B：開放式簡答題（第 4, 5, 6, 7, 8 關均支援送分與開放回答） ---
+    # --- 題型 B：開放式簡答題 ---
     elif current_q["type"] == "free_text":
         if current_num in [4, 5, 6]:
             col1, col2 = st.columns(2)
@@ -119,7 +123,7 @@ if st.session_state.level <= TOTAL_LEVELS:
     if not st.session_state.answered:
         if st.button("檢查答案"):
             if ans is None or ans == "":
-                st.warning("請先輸入答案再提交喔！")
+                st.warning("請先輸入或選擇答案再提交喔！")
             else:
                 st.session_state.answered = True
                 
@@ -130,14 +134,13 @@ if st.session_state.level <= TOTAL_LEVELS:
                 if is_correct:
                     st.session_state.score += current_q["points"]
                 
-                # 📊 數據收集點：完全在伺服器端默默發送，不受前端任何防護影響
-                track_ga_event(
-                    event_name="player_submit_answer",
-                    params={
-                        "level": str(current_num),
-                        "player_input": str(ans),
-                        "is_correct": str(is_correct)
-                    }
+                # 📊 核心數據寫入點：點擊時立刻將資料拋到雲端試算表
+                save_to_google_sheets(
+                    level=current_num,
+                    quiz_type=current_q["type"],
+                    player_input=ans,
+                    is_correct=is_correct,
+                    current_score=st.session_state.score
                 )
                 st.rerun()
     else:
