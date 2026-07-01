@@ -7,7 +7,11 @@ st.set_page_config(page_title="歷史與視覺大挑戰", page_icon="")
 # ---------------------------------------------------------
 # Google Analytics (GA4) 數據追蹤設定
 # ---------------------------------------------------------
-GA_ID = "G-SQSJPZ9SW9" 
+# ---------------------------------------------------------
+# Google Analytics (GA4) 數據追蹤設定
+# ---------------------------------------------------------
+# 確保字串乾淨，無任何隱形特殊字元
+GA_ID = "G-SQSJPZ9SW9"
 
 # 注入 GA4 基礎追蹤碼
 ga_base_code = f"""
@@ -16,10 +20,22 @@ ga_base_code = f"""
     window.parent.dataLayer = window.parent.dataLayer || [];
     function gtag(){{window.parent.dataLayer.push(arguments);}}
     gtag('js', new Date());
-    gtag('config', '{GA_ID}');
+    gtag('config', '{GA_ID}', {{ 'send_page_view': true }});
 </script>
 """
 components.html(ga_base_code, height=0, width=0)
+
+# 輔助函式：發送自訂數據與答案到 GA 後台
+def track_ga_event(event_name, params):
+    param_str = ", ".join([f"'{k}': '{v}'" for k, v in params.items()])
+    js_code = f"""
+    <script>
+        if (window.parent.gtag) {{
+            window.parent.gtag('event', '{event_name}', {{{param_str}}});
+        }}
+    </script>
+    """
+    components.html(js_code, height=0, width=0)
 
 # 輔助函式：發送自訂數據與答案到 GA 後台
 def track_ga_event(event_name, params):
