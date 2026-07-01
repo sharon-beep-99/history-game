@@ -100,8 +100,107 @@ if st.session_state.level <= TOTAL_LEVELS:
             except:
                 st.warning(f"⚠️ 找不到對比圖檔，請確認 images/ 內是否有 level{current_num}_a.jpg 與 level{current_num}_b.jpg")
         
-       elif current_num in [7, 8]:
+        # 第 7, 8 關為單圖招牌題
+        elif current_num in [7, 8]:
             try:
                 st.image(f"images/level{current_num}.jpg", caption="店鋪招牌局部", use_container_width=True)
             except:
                 st.warning(f"⚠️ 找不到圖檔，請確認 images/ 內是否有 level{current_num}.jpg")
+            
+        user_input = st.text_input("請輸入您的觀察或答案：", key=f"txt_{current_num}", disabled=st.session_state.answered)
+        ans = user_input.strip()
+
+    st.divider()
+
+    # 檢查答案邏輯
+    if not st.session_state.answered:
+        if st.button("檢查答案"):
+            if ans is None or ans == "":
+                st.warning("請先輸入答案再提交喔！")
+            else:
+                st.session_state.answered = True
+                
+                is_correct = True
+                if current_q["type"] == "single":
+                    is_correct = (ans == current_q["ans"])
+                
+                if is_correct:
+                    st.session_state.score += current_q["points"]
+                
+                # 📊 核心數據收集：直接以 HTTP 拋接提交至後端，不受前端機制干擾
+                save_data_via_form(
+                    level=current_num,
+                    quiz_type=current_q["type"],
+                    player_input=ans,
+                    is_correct=is_correct,
+                    current_score=st.session_state.score
+                )
+                st.rerun()
+    else:
+        # 顯示對錯提示與參考解析
+        if current_q["type"] == "single":
+            if ans == current_q["ans"]:
+                st.success(f"🎉 太厲害了！答案確實是【{current_q['ans']}】！")
+            else:
+                st.error(f"❌ 可惜錯囉！正確答案是【{current_q['ans']}】。")
+        else:
+            # 簡答送分題的回饋畫面
+            st.success(f"🎉 感謝您的分享！這是一題精彩的開放觀察題。")
+            st.info(f"💡 【{current_q['ans']}】")
+            
+        # 5秒自動換關計時器
+        st.markdown(
+            """
+            <div style="padding:10px; background-color:#f1f3f4; border-radius:5px; margin:10px 0;">
+                ⏳ <span id="countdown">5</span> 秒後自動前往下一關...
+            </div>
+            <script>
+            var count = 5;
+            var counter = setInterval(timer, 1000);
+            function timer() {
+                count = count - 1;
+                if (count <= 0) {
+                    clearInterval(counter);
+                    const buttons = window.parent.document.querySelectorAll('button');
+                    for (const button of buttons) {
+                        if (button.textContent.includes('自動下一關')) {
+                            button.click();
+                            break;
+                        }
+                    }
+                    return;
+                }
+                window.parent.document.getElementById("countdown").innerHTML = count;
+            }
+            </script>
+            """,
+            unsafe_allow_html=True
+        )
+
+        if st.button("自動下一關（若未跳轉請點此）", key="auto_next_btn"):
+            st.session_state.answered = False
+            st.session_state.level += 1
+            st.rerun()
+
+# --- 結算畫面 ---
+else:
+    if st.session_state.score >= 60:
+        st.balloons()
+    else:
+        st.snow()
+        
+    st.header("🎊 挑戰完成！")
+    st.write(f"你在這場歷史與視覺探索中獲得了 **{st.session_state.score}** 分（總分 100）。")
+    
+    if st.session_state.score >= 80:
+        st.success("太神了！你簡直是歷史與鑑定大師，觀察力驚人！")
+    elif st.session_state.score >= 60:
+        st.info("很棒的表現！你對歷史圖像與史實細節有很強的直覺。")
+    else:
+        st.warning("這些題目相當考驗眼力與史實功底，分數拿這樣已經不容易了，再接再厲！")
+    
+    if st.button("重新開始挑戰"):
+        st.session_state.level = 1
+        st.session_state.score = 0
+        st.session_state.answered = False
+        st.rerun()
