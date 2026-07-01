@@ -191,4 +191,30 @@ if st.session_state.level <= TOTAL_LEVELS:
 # 結算畫面
 # ---------------------------------------------------------
 else:
-    if st.session_state.score >= 60
+    if st.session_state.score >= 60:
+        st.balloons()
+    else:
+        st.snow()
+        
+    st.header("🎊 挑戰完成！")
+    st.write(f"你在這場歷史與視覺探索中獲得了 **{st.session_state.score}** 分（總分 100）。")
+    
+    track_ga_event(
+        event_name="game_finished",
+        params={
+            "final_score": str(st.session_state.score)
+        }
+    )
+    
+    if st.session_state.score >= 80:
+        st.success("太神了！你簡直是歷史與鑑定大師，觀察力驚人！")
+    elif st.session_state.score >= 60:
+        st.info("很棒的表現！你對歷史圖像與史實細節有很強的直覺。")
+    else:
+        st.warning("這些題目相當考驗眼力與史實功底，分數拿這樣已經不容易了，再接再厲！")
+    
+    if st.button("重新開始挑戰"):
+        st.session_state.level = 1
+        st.session_state.score = 0
+        st.session_state.answered = False
+        st.rerun()
