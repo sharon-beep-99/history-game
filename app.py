@@ -100,7 +100,8 @@ if st.session_state.level <= TOTAL_LEVELS:
             except:
                 st.warning(f"⚠️ 找不到對比圖檔，請確認 images/ 內是否有 level{current_num}_a.jpg 與 level{current_num}_b.jpg")
         
-        # 第 7, 8 關為單圖招牌題
-        elif current_num in [7, 8]:
+       elif current_num in [7, 8]:
             try:
-                st.image(f"images/level{current_num}.jpg", caption="店鋪招牌
+                st.image(f"images/level{current_num}.jpg", caption="店鋪招牌局部", use_container_width=True)
+            except:
+                st.warning(f"⚠️ 找不到圖檔，請確認 images/ 內是否有 level{current_num}.jpg")
